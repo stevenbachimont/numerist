@@ -11,11 +11,13 @@ RUN npm run build
 FROM node:18-alpine
 
 WORKDIR /app
-COPY --from=build /app/build build/
 COPY --from=build /app/package.json .
 COPY --from=build /app/node_modules node_modules/
+COPY --from=build /app/.svelte-kit .svelte-kit/
+COPY --from=build /app/build build/
 
-EXPOSE 3000
+EXPOSE 3333
 ENV NODE_ENV=production
+ENV PORT=3333
 
-CMD ["node", "build"] 
+CMD ["node", "-r", "dotenv/config", "build"] 
