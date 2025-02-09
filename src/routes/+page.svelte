@@ -38,6 +38,47 @@
   let isDragging = false;
   let imageFile = null;
 
+  let updateDisplay = () => {
+    if (!videoElement || !displayCanvas) return;
+    
+    displayCanvas.width = videoElement.videoWidth;
+    displayCanvas.height = videoElement.videoHeight;
+    
+    displayContext.drawImage(videoElement, 0, 0);
+    
+    const imageData = displayContext.getImageData(0, 0, displayCanvas.width, displayCanvas.height);
+    const data = imageData.data;
+    
+    const contrastFactor = (contrast / 100);
+    const exposureFactor = Math.pow(2, exposure); // Conversion exponentielle pour l'exposition
+
+    for (let i = 0; i < data.length; i += 4) {
+      // Appliquer l'exposition et le contraste
+      for (let j = 0; j < 3; j++) {
+        let color = data[i + j];
+        
+        // Appliquer l'exposition
+        color *= exposureFactor;
+        
+        // Appliquer le contraste
+        color = contrastFactor * (color - 128) + 128;
+        
+        // Limiter les valeurs entre 0 et 255
+        data[i + j] = Math.min(255, Math.max(0, color));
+      }
+      
+      // Appliquer l'inversion si activée
+      if (isInverted) {
+        data[i] = 255 - data[i];
+        data[i + 1] = 255 - data[i + 1];
+        data[i + 2] = 255 - data[i + 2];
+      }
+    }
+    
+    displayContext.putImageData(imageData, 0, 0);
+    animationFrameId = requestAnimationFrame(updateDisplay);
+  };
+
   async function getVideoDevices() {
     try {
       const devices = await navigator.mediaDevices.enumerateDevices();
@@ -81,47 +122,6 @@
     } catch (error) {
       console.error('Erreur lors de l\'accès à la webcam : ', error);
     }
-  }
-
-  function updateDisplay() {
-    if (!videoElement || !displayCanvas) return;
-    
-    displayCanvas.width = videoElement.videoWidth;
-    displayCanvas.height = videoElement.videoHeight;
-    
-    displayContext.drawImage(videoElement, 0, 0);
-    
-    const imageData = displayContext.getImageData(0, 0, displayCanvas.width, displayCanvas.height);
-    const data = imageData.data;
-    
-    const contrastFactor = (contrast / 100);
-    const exposureFactor = Math.pow(2, exposure); // Conversion exponentielle pour l'exposition
-
-    for (let i = 0; i < data.length; i += 4) {
-      // Appliquer l'exposition et le contraste
-      for (let j = 0; j < 3; j++) {
-        let color = data[i + j];
-        
-        // Appliquer l'exposition
-        color *= exposureFactor;
-        
-        // Appliquer le contraste
-        color = contrastFactor * (color - 128) + 128;
-        
-        // Limiter les valeurs entre 0 et 255
-        data[i + j] = Math.min(255, Math.max(0, color));
-      }
-      
-      // Appliquer l'inversion si activée
-      if (isInverted) {
-        data[i] = 255 - data[i];
-        data[i + 1] = 255 - data[i + 1];
-        data[i + 2] = 255 - data[i + 2];
-      }
-    }
-    
-    displayContext.putImageData(imageData, 0, 0);
-    animationFrameId = requestAnimationFrame(updateDisplay);
   }
 
   function capturePhoto() {
@@ -465,7 +465,10 @@
         // Démarrer la boucle d'affichage
         updateDisplay();
       };
-      img.src = e.target.result;
+      // Ajouter une vérification de type
+      if (typeof e.target.result === 'string') {
+        img.src = e.target.result;
+      }
     };
     reader.readAsDataURL(file);
   }
@@ -664,13 +667,18 @@
     flex-direction: column;
     align-items: center;
     gap: 1rem;
-    padding: 1rem;
+    padding: 0.5rem;
+    width: 100%;
+    max-width: 100vw;
+    box-sizing: border-box;
   }
 
   .video-container {
     position: relative;
     width: 100%;
-    max-width: 1920px;
+    max-width: 100vw;
+    height: auto;
+    aspect-ratio: 16/9;
   }
 
   video {
@@ -679,22 +687,69 @@
   }
 
   .controls {
-    display: flex;
-    gap: 1rem;
-    flex-wrap: wrap;
-    justify-content: center;
-    max-width: 100%;
-    padding: 1.5rem;
-    background: #1a1a1a;
-    border-radius: 8px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    margin: 1rem;
+    width: 100%;
+    padding: 1rem;
+    gap: 0.5rem;
+  }
+
+  .control-group {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .slider-control {
+    width: 100%;
+    min-width: unset;
+  }
+
+  @media (min-width: 768px) {
+    .container {
+      padding: 1rem;
+    }
+
+    .control-group {
+      flex-direction: row;
+    }
+
+    .controls {
+      padding: 1.5rem;
+    }
+
+    .slider-control {
+      min-width: 200px;
+    }
+  }
+
+  /* Ajuster les boutons pour mobile */
+  button {
+    width: 100%;
+    margin: 0.2rem 0;
+  }
+
+  @media (min-width: 768px) {
+    button {
+      width: auto;
+      margin: 0;
+    }
+  }
+
+  /* Ajuster le sélecteur de caméra */
+  select {
+    width: 100%;
+    margin: 0.2rem 0;
+  }
+
+  @media (min-width: 768px) {
+    select {
+      width: auto;
+      min-width: 200px;
+    }
   }
 
   .display-canvas {
     width: 100%;
-    height: auto;
-    background-color: #000;
+    height: 100%;
+    object-fit: contain;
   }
 
   .hidden {
@@ -730,61 +785,6 @@
   select:focus {
     outline: none;
     border-color: #666;
-  }
-
-  .slider-control {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.8rem;
-    min-width: 200px;
-    background: #262626;
-    padding: 1rem;
-    border-radius: 6px;
-    border: 1px solid #333;
-  }
-
-  input[type="range"] {
-    width: 100%;
-    height: 25px;
-    -webkit-appearance: none;
-    background: transparent;
-  }
-
-  input[type="range"]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    height: 18px;
-    width: 18px;
-    border-radius: 50%;
-    background: #fff;
-    cursor: pointer;
-    margin-top: -7px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    transition: all 0.2s ease;
-  }
-
-  input[type="range"]::-webkit-slider-thumb:hover {
-    background: #eee;
-    transform: scale(1.1);
-  }
-
-  input[type="range"]::-webkit-slider-runnable-track {
-    width: 100%;
-    height: 4px;
-    background: #444;
-    border-radius: 2px;
-  }
-
-  input[type="range"]:focus {
-    outline: none;
-  }
-
-  label {
-    font-size: 0.9em;
-    color: #fff;
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
   }
 
   .crop-overlay {
