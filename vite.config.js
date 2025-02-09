@@ -10,6 +10,10 @@ export default defineConfig({
 	},
 	preview: {
 		host: '0.0.0.0',
-		port: 3333
+		port: 3333,
+		allowedHosts: [
+			'numerist.stevenbachimont.com',
+			'localhost'
+		]
 	}
 });
