@@ -1,16 +1,12 @@
-import { sveltekit } from '@sveltejs/kit/vite';
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vite'
+import { svelte } from '@sveltejs/vite-plugin-svelte'
 
 // https://vite.dev/config/
 export default defineConfig({
-	plugins: [sveltekit()],
+	plugins: [svelte()],
 	server: {
 		host: '0.0.0.0',
-		port: 3333,
-		allowedHosts: [
-			'numerist.stevenbachimont.com',
-			'localhost'
-		]
+		port: 3333
 	},
 	preview: {
 		host: '0.0.0.0',
