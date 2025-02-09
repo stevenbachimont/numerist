@@ -11,5 +11,9 @@ export default defineConfig({
 			'numerist.stevenbachimont.com',
 			'localhost'
 		]
+	},
+	preview: {
+		host: '0.0.0.0',
+		port: 3333
 	}
 });
