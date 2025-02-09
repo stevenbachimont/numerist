@@ -113,6 +113,7 @@
       const constraints = {
         video: {
           deviceId: selectedDeviceId,
+          facingMode: { ideal: "environment" },
           width: { ideal: 1920 },
           height: { ideal: 1080 }
         }
