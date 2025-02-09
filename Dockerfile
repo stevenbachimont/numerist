@@ -7,15 +7,13 @@ RUN npm install
 COPY . .
 RUN npm run build
 
-# Étape de production
-FROM node:18-alpine
+# Étape de production avec Nginx
+FROM nginx:alpine
 
 WORKDIR /app
-COPY --from=build /app/.svelte-kit .svelte-kit/
-COPY --from=build /app/package.json .
-COPY --from=build /app/node_modules node_modules/
+COPY --from=build /app/build /usr/share/nginx/html
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 3333
-ENV NODE_ENV=production
 
 CMD ["node", "-r dotenv/config", "build"] 
