@@ -673,17 +673,15 @@
     align-items: center;
     gap: 1rem;
     padding: 0.5rem;
-    width: 100%;
-    max-width: 100vw;
+    width: 100vw;
     box-sizing: border-box;
   }
 
   .video-container {
     position: relative;
-    width: 100%;
-    max-width: 100vw;
+    width: 100vw;
     height: auto;
-    aspect-ratio: 16/9;
+    aspect-ratio: 4/3;  /* Ratio plus carré pour mobile */
   }
 
   video {
@@ -692,8 +690,12 @@
   }
 
   .controls {
+    position: fixed;
+    bottom: 0;
+    left: 0;
     width: 100%;
-    padding: 1rem;
+    padding: 0.5rem;
+    background: rgba(0, 0, 0, 0.8);
     gap: 0.5rem;
   }
 
@@ -935,5 +937,18 @@
   .file-input-label:hover {
     background-color: #444;
     border-color: #666;
+  }
+
+  @media (orientation: portrait) {
+    .video-container {
+      height: 70vh;  /* Prend 70% de la hauteur de l'écran en mode portrait */
+      aspect-ratio: unset;
+    }
+
+    .display-canvas {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;  /* Remplit tout l'espace disponible */
+    }
   }
 </style> 
