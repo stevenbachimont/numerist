@@ -667,6 +667,13 @@
 </div>
 
 <style>
+  :global(body) {
+    margin: 0;
+    padding: 0;
+    overflow-y: auto;
+    min-height: 100vh;
+  }
+
   .container {
     display: flex;
     flex-direction: column;
@@ -675,13 +682,14 @@
     padding: 0.5rem;
     width: 100vw;
     box-sizing: border-box;
+    min-height: 100vh;
   }
 
   .video-container {
     position: relative;
     width: 100vw;
     height: auto;
-    aspect-ratio: 4/3;  /* Ratio plus carré pour mobile */
+    aspect-ratio: 3/4;  /* Plus haut que large pour le mobile */
   }
 
   video {
@@ -690,13 +698,13 @@
   }
 
   .controls {
-    position: fixed;
-    bottom: 0;
-    left: 0;
     width: 100%;
     padding: 0.5rem;
     background: rgba(0, 0, 0, 0.8);
     gap: 0.5rem;
+    margin-top: 1rem;
+    border-radius: 8px;
+    position: relative;  /* Assure que les contrôles restent dans le flux */
   }
 
   .control-group {
@@ -941,14 +949,14 @@
 
   @media (orientation: portrait) {
     .video-container {
-      height: 70vh;  /* Prend 70% de la hauteur de l'écran en mode portrait */
+      height: 70vh;  /* Plus grand pour mieux voir l'image */
       aspect-ratio: unset;
     }
 
     .display-canvas {
       width: 100%;
       height: 100%;
-      object-fit: cover;  /* Remplit tout l'espace disponible */
+      object-fit: cover;
     }
   }
 </style> 
