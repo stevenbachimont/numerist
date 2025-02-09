@@ -11,9 +11,9 @@ RUN npm run build
 FROM nginx:alpine
 
 WORKDIR /app
-COPY --from=build /app/build /usr/share/nginx/html
+COPY --from=build /app/.svelte-kit/output/client /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 3333
 
-CMD ["node", "-r dotenv/config", "build"] 
+CMD ["nginx", "-g", "daemon off;"] 
