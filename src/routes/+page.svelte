@@ -81,6 +81,10 @@
 
   async function getVideoDevices() {
     try {
+      if (!navigator.mediaDevices) {
+        console.warn('MediaDevices API non disponible. Vérifiez que vous utilisez HTTPS ou localhost.');
+        return [];
+      }
       const devices = await navigator.mediaDevices.enumerateDevices();
       return devices.filter(device => device.kind === 'videoinput');
     } catch (error) {
@@ -91,7 +95,7 @@
 
   async function updateVideoDevicesList() {
     videoDevices = await getVideoDevices();
-    if (videoDevices.length > 0 && !selectedDeviceId) {
+    if (videoDevices && videoDevices.length > 0 && !selectedDeviceId) {
       selectedDeviceId = videoDevices[0].deviceId;
       await startCapture();
     }
