@@ -38,6 +38,10 @@
   let isDragging = false;
   let imageFile = null;
 
+  let capturedPhotos = [];
+  let selectedPhoto = null;
+  let isCapturing = false;  // Pour éviter les captures multiples
+
   let updateDisplay = () => {
     if (!videoElement || !displayCanvas) return;
     
@@ -130,15 +134,20 @@
   }
 
   function capturePhoto() {
-    // Utiliser le canvas d'affichage pour la capture
+    if (isCapturing) return;  // Si déjà en train de capturer, on ignore
+    isCapturing = true;
+
     canvasElement.width = displayCanvas.width;
     canvasElement.height = displayCanvas.height;
     context.drawImage(displayCanvas, 0, 0);
     
     const imageBase64 = canvasElement.toDataURL('image/jpeg');
-    const imageElement = document.createElement('img');
-    imageElement.src = imageBase64;
-    document.body.appendChild(imageElement);
+    capturedPhotos = [{ src: imageBase64, timestamp: Date.now() }, ...capturedPhotos];
+
+    // Réinitialiser après un court délai
+    setTimeout(() => {
+      isCapturing = false;
+    }, 500);  // 500ms de délai avant de permettre une nouvelle capture
   }
 
   function handleKeydown(event) {
@@ -155,6 +164,31 @@
     cropArea.height = cropArea.width;
     cropArea.x = (canvasRect.width - cropArea.width) / 2;
     cropArea.y = (canvasRect.height - cropArea.height) / 2;
+  }
+
+  function getTouchPosition(touch, element) {
+    const rect = element.getBoundingClientRect();
+    return {
+      x: touch.clientX - rect.left,
+      y: touch.clientY - rect.top
+    };
+  }
+
+  function handleTouchStart(event) {
+    const touch = event.touches[0];
+    const pos = getTouchPosition(touch, displayCanvas);
+    handleCropMouseDown({ clientX: touch.clientX, clientY: touch.clientY });
+  }
+
+  function handleTouchMove(event) {
+    if (event.touches.length === 1) {
+      const touch = event.touches[0];
+      handleCropMouseMove({ clientX: touch.clientX, clientY: touch.clientY });
+    }
+  }
+
+  function handleTouchEnd() {
+    handleCropMouseUp();
   }
 
   function handleCropMouseDown(event) {
@@ -495,6 +529,14 @@
     }
   }
 
+  function openModal(photo) {
+    selectedPhoto = photo;
+  }
+
+  function closeModal() {
+    selectedPhoto = null;
+  }
+
   onMount(() => {
     // Initialiser les contextes avec willReadFrequently
     context = initCanvas(canvasElement);
@@ -553,6 +595,9 @@
     {#if mode === 'import' && !imageFile}
       <div 
         class="drop-zone {isDragging ? 'dragging' : ''}"
+        role="button"
+        aria-label="Zone de dépôt d'image"
+        tabindex="0"
         on:dragenter={handleDragEnter}
         on:dragover|preventDefault
         on:dragleave={handleDragLeave}
@@ -577,10 +622,14 @@
     {#if isCropping}
       <div 
         class="crop-overlay"
+        role="presentation"
         on:mousedown={handleCropMouseDown}
         on:mousemove={handleCropMouseMove}
         on:mouseup={handleCropMouseUp}
         on:mouseleave={handleCropMouseUp}
+        on:touchstart|preventDefault={handleTouchStart}
+        on:touchmove|preventDefault={handleTouchMove}
+        on:touchend|preventDefault={handleTouchEnd}
       >
         <div 
           class="crop-area"
@@ -664,6 +713,30 @@
       </div>
     </div>
   </div>
+
+  {#if capturedPhotos.length > 0}
+    <div class="photo-grid">
+      {#each capturedPhotos as photo}
+        <div class="photo-item">
+          <img src={photo.src} alt="Capture {new Date(photo.timestamp).toLocaleTimeString()}" />
+          <div class="photo-overlay">
+            <button class="photo-action" on:click={() => openModal(photo)}>
+              Agrandir
+            </button>
+          </div>
+        </div>
+      {/each}
+    </div>
+  {/if}
+
+  {#if selectedPhoto}
+    <div class="modal-overlay" on:click={closeModal}>
+      <div class="modal-content" on:click|stopPropagation>
+        <img src={selectedPhoto.src} alt="Photo agrandie" />
+        <button class="modal-close" on:click={closeModal}>×</button>
+      </div>
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -672,24 +745,79 @@
     padding: 0;
     overflow-y: auto;
     min-height: 100vh;
+    background: #000000;
   }
 
   .container {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 1rem;
+    gap: 0.5rem;
     padding: 0.5rem;
     width: 100vw;
     box-sizing: border-box;
-    min-height: 100vh;
+    min-height: calc(100vh - 1rem);
   }
 
   .video-container {
     position: relative;
     width: 100vw;
     height: auto;
-    aspect-ratio: 3/4;  /* Plus haut que large pour le mobile */
+    aspect-ratio: 3/4;
+  }
+
+  /* Style desktop */
+  @media (min-width: 1024px) {
+    .container {
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 1rem;
+      max-width: 600px;
+      margin: 0 auto;
+      height: 100vh;
+    }
+
+    .video-container {
+      width: 100%;
+      max-width: 500px;
+      aspect-ratio: 4/3;
+    }
+
+    .controls {
+      width: 100%;
+      max-width: 500px;
+      margin-top: 0.5rem;
+      background: rgba(40, 40, 40, 0.9);
+      padding: 0.5rem;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .control-group {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 0.5rem;
+    }
+
+    button, select {
+      width: auto;
+    }
+  }
+
+  /* Style tablette */
+  @media (min-width: 768px) and (max-width: 1023px) {
+    .container {
+      padding: 1rem;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .video-container {
+      width: 80%;
+      max-width: 600px;
+    }
   }
 
   video {
@@ -700,64 +828,44 @@
   .controls {
     width: 100%;
     padding: 0.5rem;
-    background: rgba(0, 0, 0, 0.8);
+    background: rgba(40, 40, 40, 0.9);
     gap: 0.5rem;
-    margin-top: 1rem;
+    margin-top: 0.5rem;
     border-radius: 8px;
-    position: relative;  /* Assure que les contrôles restent dans le flux */
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
   }
 
   .control-group {
+    display: flex;
     flex-direction: column;
     width: 100%;
+    gap: 0.5rem;
   }
 
   .slider-control {
     width: 100%;
     min-width: unset;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    background: rgba(60, 60, 60, 0.9);
+    padding: 0.5rem;
+    border-radius: 8px;
+    color: #ffffff;
   }
 
-  @media (min-width: 768px) {
-    .container {
-      padding: 1rem;
-    }
-
+  @media (min-width: 1024px) {
     .control-group {
       flex-direction: row;
-    }
-
-    .controls {
-      padding: 1.5rem;
+      flex-wrap: wrap;
+      justify-content: space-between;
     }
 
     .slider-control {
-      min-width: 200px;
-    }
-  }
-
-  /* Ajuster les boutons pour mobile */
-  button {
-    width: 100%;
-    margin: 0.2rem 0;
-  }
-
-  @media (min-width: 768px) {
-    button {
-      width: auto;
-      margin: 0;
-    }
-  }
-
-  /* Ajuster le sélecteur de caméra */
-  select {
-    width: 100%;
-    margin: 0.2rem 0;
-  }
-
-  @media (min-width: 768px) {
-    select {
-      width: auto;
-      min-width: 200px;
+      width: 48%;
     }
   }
 
@@ -773,28 +881,28 @@
 
   button {
     padding: 0.7rem 1.2rem;
-    background-color: #333;
+    background-color: #404040;
     color: white;
-    border: 1px solid #444;
-    border-radius: 4px;
+    border: none;
+    border-radius: 8px;
     cursor: pointer;
     font-weight: 500;
     transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   }
 
   button:hover {
-    background-color: #444;
-    border-color: #666;
+    background-color: #505050;
   }
 
   select {
     padding: 0.7rem;
-    border-radius: 4px;
-    background: #333;
+    border-radius: 8px;
+    background: #404040;
     color: white;
-    border: 1px solid #444;
+    border: none;
     cursor: pointer;
-    min-width: 200px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   }
 
   select:focus {
@@ -881,25 +989,16 @@
     cursor: s-resize;
   }
 
-  /* Groupe de contrôles spécifiques */
-  .control-group {
-    display: flex;
-    gap: 1rem;
-    align-items: center;
-    padding: 0.5rem;
-    border-radius: 4px;
-  }
-
   /* Style pour les boutons actifs */
   button.active {
-    background-color: #fff;
-    color: #1a1a1a;
+    background-color: #606060;
+    color: white;
   }
 
   .mode-selector {
     display: flex;
-    gap: 1rem;
-    margin-bottom: 1rem;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
   }
 
   .drop-zone {
@@ -949,8 +1048,10 @@
 
   @media (orientation: portrait) {
     .video-container {
-      height: 70vh;  /* Plus grand pour mieux voir l'image */
+      height: 60vh;
       aspect-ratio: unset;
+      margin: 0;
+      padding: 0;
     }
 
     .display-canvas {
@@ -958,5 +1059,167 @@
       height: 100%;
       object-fit: cover;
     }
+
+    .controls {
+      height: 30vh;
+      overflow-y: auto;
+      margin-top: 0;
+      padding: 0.25rem;
+      gap: 0.25rem;
+    }
+
+    button {
+      padding: 0.4rem 0.8rem;
+      font-size: 0.9rem;
+      min-height: 36px;
+    }
+
+    select {
+      padding: 0.4rem;
+      font-size: 0.9rem;
+      height: 36px;
+    }
+
+    .slider-control {
+      padding: 0.25rem;
+      font-size: 0.9rem;
+    }
+
+    .slider-control label {
+      font-size: 0.85rem;
+    }
+
+    .mode-selector {
+      gap: 0.25rem;
+      margin-bottom: 0.25rem;
+    }
+
+    .control-group {
+      gap: 0.25rem;
+    }
+
+    .photo-grid {
+      height: 8vh;
+      overflow-x: auto;
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 0.15rem;
+      padding: 0.15rem;
+      margin-top: 0.25rem;
+    }
+
+    .photo-item {
+      flex: 0 0 auto;
+      width: calc(8vh - 0.3rem);
+      height: calc(8vh - 0.3rem);
+    }
+
+    .photo-action {
+      padding: 0.2rem 0.4rem;
+      font-size: 0.75rem;
+    }
+  }
+
+  input[type="range"] {
+    accent-color: #8b98b9;
+  }
+
+  .photo-grid {
+    width: 100%;
+    max-width: 500px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 0.5rem;
+    padding: 0.5rem;
+    background: rgba(40, 40, 40, 0.9);
+    border-radius: 8px;
+    margin-top: 0.5rem;
+  }
+
+  .photo-item {
+    position: relative;
+    aspect-ratio: 1;
+    overflow: hidden;
+    border-radius: 4px;
+  }
+
+  .photo-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .photo-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .photo-item:hover .photo-overlay {
+    opacity: 1;
+  }
+
+  .photo-action {
+    padding: 0.3rem 0.6rem;
+    font-size: 0.8rem;
+  }
+
+  @media (min-width: 1024px) {
+    .container {
+      height: auto;  /* Permettre le défilement */
+      min-height: 100vh;
+    }
+  }
+
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+
+  .modal-content {
+    position: relative;
+    max-width: 90vw;
+    max-height: 90vh;
+    margin: 20px;
+  }
+
+  .modal-content img {
+    max-width: 100%;
+    max-height: 90vh;
+    object-fit: contain;
+  }
+
+  .modal-close {
+    position: absolute;
+    top: -40px;
+    right: -40px;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 2rem;
+    cursor: pointer;
+    padding: 10px;
+    box-shadow: none;
+  }
+
+  .modal-close:hover {
+    color: #ccc;
+    background: none;
   }
 </style> 
